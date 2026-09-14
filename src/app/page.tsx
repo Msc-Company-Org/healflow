@@ -22,13 +22,14 @@ interface IncidentCard {
   branch: string;
   commitSha: string;
   workflow: string;
-  status: "healed" | "analyzing" | "failed";
+  status: "healed" | "analyzing" | "failed" | "requires_human";
   errorMessage: string;
   rootCause: string;
   patchDiff: string;
   timeSaved: string;
   timestamp: string;
   bobSessionId: string;
+  executionMode?: "live" | "simulated";
 }
 
 const INITIAL_INCIDENTS: IncidentCard[] = [
@@ -39,9 +40,10 @@ const INITIAL_INCIDENTS: IncidentCard[] = [
     commitSha: "8a2f1b4",
     workflow: "CI / Production Build & Unit Tests",
     status: "healed",
+    executionMode: "simulated",
     errorMessage: "TypeError: Cannot read property 'clientSecret' of undefined in payment.resolver.ts:42",
     rootCause:
-      "Stripe API payload structure updated in v2026.1. Optional chaining guard missing on customer confirmation payload.",
+      "[DEMO FIXTURE] Stripe API payload structure updated in v2026.1. Optional chaining guard missing on customer confirmation payload.",
     patchDiff: `--- a/src/services/payment.resolver.ts
 +++ b/src/services/payment.resolver.ts
 @@ -41,3 +41,3 @@
@@ -50,7 +52,7 @@ const INITIAL_INCIDENTS: IncidentCard[] = [
   return { secret };`,
     timeSaved: "25 min",
     timestamp: "2 mins ago",
-    bobSessionId: "bob-task-1726301",
+    bobSessionId: "demo-sim-1726301",
   },
   {
     id: "inc_9840_live",
@@ -59,9 +61,10 @@ const INITIAL_INCIDENTS: IncidentCard[] = [
     commitSha: "4c9d7e1",
     workflow: "Build & Typecheck",
     status: "healed",
+    executionMode: "simulated",
     errorMessage: "Module not found: Can't resolve '@tailwindcss/postcss' in postcss.config.mjs",
     rootCause:
-      "Legacy postcss config syntax present after Tailwind CSS v4 upgrade. Missing directive alignment in bundle config.",
+      "[DEMO FIXTURE] Legacy postcss config syntax present after Tailwind CSS v4 upgrade. Missing directive alignment in bundle config.",
     patchDiff: `--- a/postcss.config.mjs
 +++ b/postcss.config.mjs
 @@ -1,4 +1,4 @@
@@ -73,7 +76,7 @@ const INITIAL_INCIDENTS: IncidentCard[] = [
  };`,
     timeSaved: "15 min",
     timestamp: "18 mins ago",
-    bobSessionId: "bob-task-1726284",
+    bobSessionId: "demo-sim-1726284",
   },
 ];
 
@@ -92,24 +95,26 @@ export default function DashboardPage() {
       commitSha: "7b8e3a2",
       workflow: "CI / Automated Vitest Suite",
       status: "analyzing",
+      executionMode: "simulated",
       errorMessage: "AssertionError: Expected status 'active' but received 'quarantined' in agent.test.ts:18",
-      rootCause: "Analyzing with IBM Bob 2.0 full-repository context...",
-      patchDiff: "// IBM Bob 2.0 reasoning in progress across 14 repository files...",
+      rootCause: "[DEMO] Simulating IBM Bob 2.0 full-repository analysis...",
+      patchDiff: "// Demo simulation in progress across repository files...",
       timeSaved: "Calculating...",
       timestamp: "Just now",
-      bobSessionId: `bob-task-${Date.now()}`,
+      bobSessionId: `demo-sim-${Date.now()}`,
     };
 
     setIncidents((prev) => [newIncident, ...prev]);
     setSelectedIncident(newIncident);
 
-    // Simulate IBM Bob 2.0 processing and healing after 2.5s
+    // Simulate IBM Bob 2.0 processing and healing after 2.5s (Demo fixture)
     setTimeout(() => {
       const healedIncident: IncidentCard = {
         ...newIncident,
         status: "healed",
+        executionMode: "simulated",
         rootCause:
-          "Race condition detected in memory synchronization lifecycle. State transitions from pending to active before lease renewal.",
+          "[DEMO FIXTURE] Race condition detected in memory synchronization lifecycle. State transitions from pending to active before lease renewal.",
         patchDiff: `--- a/src/agents/memory-lease.ts
 +++ b/src/agents/memory-lease.ts
 @@ -29,2 +29,3 @@
@@ -238,6 +243,11 @@ export default function DashboardPage() {
                         <span className="font-mono text-xs font-semibold text-slate-200">
                           {incident.repository}
                         </span>
+                        {incident.executionMode === "simulated" && (
+                          <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                            Demo
+                          </span>
+                        )}
                       </div>
                       <span
                         className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
@@ -289,17 +299,31 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Root Cause Analysis by Bob 2.0 */}
+            {/* Root Cause Analysis */}
             <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Bot className="size-4 text-cyan-400" />
-                IBM Bob 2.0 Root Cause Analysis
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Bot className="size-4 text-cyan-400" />
+                  Root Cause Analysis
+                </h3>
+                {selectedIncident.executionMode === "simulated" ? (
+                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-amber-500/30">
+                    Offline Simulation
+                  </span>
+                ) : (
+                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                    Live IBM Bob 2.0
+                  </span>
+                )}
+              </div>
               <div className="bg-slate-950/80 border border-slate-800/80 rounded-lg p-4 text-xs text-slate-300 leading-relaxed font-sans">
                 {selectedIncident.rootCause}
               </div>
               <p className="text-[11px] text-slate-500 font-mono">
-                Task Session Evidence: #{selectedIncident.bobSessionId} • Model: ibm-bob-2.0-granite
+                Task Session Evidence: #{selectedIncident.bobSessionId} •{" "}
+                {selectedIncident.executionMode === "live"
+                  ? "Live Engine: IBM Bob 2.0 (Granite)"
+                  : "Mode: Synthetic Demo Fixture (Offline Heuristic)"}
               </p>
             </div>
 

@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "node --import tsx --test tests/unit/**/*.test.ts",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

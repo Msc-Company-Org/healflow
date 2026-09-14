@@ -65,6 +65,27 @@ export async function POST(request: Request) {
       files: [],
     });
 
+    if (!analysis.success) {
+      // Record failure truthfully — do not fabricate successful healing when Bob is unreachable
+      await db
+        .update(incidents)
+        .set({
+          status: "requires_human",
+          errorMessage: `Workflow '${workflowName}' failed on branch ${branchName}. Auto-heal aborted: ${analysis.error}`,
+          rootCauseAnalysis: `Auto-heal aborted due to engine status [${analysis.mode}/${analysis.reason}]: ${analysis.error}. Requires developer inspection.`,
+          updatedAt: new Date(),
+        })
+        .where(eq(incidents.id, incidentId));
+
+      return NextResponse.json({
+        success: false,
+        incidentId,
+        status: "requires_human",
+        error: analysis.error,
+        reason: analysis.reason,
+      });
+    }
+
     // 3. Update incident with synthesized root cause and patch
     const patchDiff = analysis.patches.map((p) => p.diff).join("\n\n");
     await db
@@ -78,11 +99,11 @@ export async function POST(request: Request) {
       })
       .where(eq(incidents.id, incidentId));
 
-    // 4. Record Bob 2.0 task session for required hackathon evidence
+    // 4. Record Bob 2.0 task session for hackathon evidence (distinguishing live vs simulated)
     await db.insert(bobSessions).values({
       id: analysis.sessionSummary.sessionId,
       incidentId,
-      taskType: "root_cause_and_patch",
+      taskType: analysis.mode === "live" ? "root_cause_and_patch" : "simulated_demonstration",
       promptSummary: `Analyze failed CI run #${run.id} for ${repoFullName}@${commitSha}`,
       responseSummary: analysis.rootCause,
       filesInspected: JSON.stringify(analysis.filesInspected),
@@ -92,6 +113,7 @@ export async function POST(request: Request) {
       success: true,
       incidentId,
       status: "healed",
+      mode: analysis.mode,
       bobSessionId: analysis.sessionSummary.sessionId,
     });
   } catch (error) {
